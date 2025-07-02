@@ -6,7 +6,7 @@ const app = express();
 
 const email = "SOOS1412123@gmail.com";
 const password = "SOOS";
-const commentText = "انمي حْرا .";
+const commentText = "انمي حْرا..";
 
 // إعدادات التحكم
 const maxCommentsPerAnime = 75;
