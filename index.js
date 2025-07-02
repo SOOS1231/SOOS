@@ -6,7 +6,7 @@ const app = express();
 
 const email = "SOOS1412123@gmail.com";
 const password = "SOOS";
-const commentText = "انمي حْرا..";
+const commentText = "انمي حْرا ";
 
 // إعدادات التحكم
 const maxCommentsPerAnime = 75;
@@ -17,36 +17,36 @@ const parallelAnimeCount = 3;
 // 📝 قائمة الأنميات مع الاسم وحالة التفعيل
 const animeTargets = {
   532:    { active: true, name: "One Piece" },
-  11708:  { active: true, name: "Ninja to Koroshiya no" },
-  11547:  { active: true, name: "Kimi to Boku no Saigo no" },
-  11707:  { active: true, name: "Apocalypse Hotel" },
-  11723:  { active: true, name: "Kidou Senshi Gundam" },
-  11706:  { active: true, name: "Shiunji-ke no Kodomotachi" },
+  11729:  { active: true, name: "Necronomico no Cosmic Horror Show" },
+  11728:  { active: true, name: "Kanojo, Okarishimasu 4th Season" },
+  :  { active: false, name: "Apocalypse Hotel" },
+  :  { active: false, name: "Kidou Senshi Gundam" },
+  :  { active: false, name: "Shiunji-ke no Kodomotachi" },
   11673:  { active: true, name: "Kijin Gentoushou" },
-  11704:  { active: true, name: "Compass 2.0: Sentou" },
+  :  { active: false, name: "Compass 2.0: Sentou" },
   11703:  { active: true, name: "Vigilante: Boku no Hero" },
   11702:  { active: true, name: "Summer Pockets" },
-  11700:  { active: true, name: "Aharen-san wa Hakarenai" },
+  :  { active: false, name: "Aharen-san wa Hakarenai" },
   11705:  { active: true, name: "Lazarus" },
-  11699:  { active: true, name: "Maebashi Witches" },
-  11698:  { active: true, name: "Gorilla no kami kara kago" },
+  :  { active: false, name: "Maebashi Witches" },
+  :  { active: false, name: "Gorilla no kami kara kago" },
   11694:  { active: true, name: "Shin Samurai-den Yaiba" },
   11697:  { active: true, name: "Witch Watch" },
   11721:  { active: true, name: "The All-devouring whale" },
-  11718:  { active: true, name: "Ore wa Seikan Kokka no" },
-  11693:  { active: true, name: "Shoushimin Series 2nd" },
-  11692:  { active: true, name: "Classic*Stars" },
-  11663:  { active: true, name: "A-Rank Party wo" },
+  11718:  { active: false, name: "Ore wa Seikan Kokka no" },
+  11724:  { active: true, name: "Takopii no Genzai" },
+  :  { active: false, name: "Classic*Stars" },
+  :  { active: false, name: "A-Rank Party wo" },
   11710:  { active: true, name: "Hibi wa Sugiredo Meshi" },
   11711:  { active: true, name: "Mono" },
-  11691:  { active: true, name: "Kuroshitsuji: Midori no Majo" },
-  11689:  { active: true, name: "Katainaka no Ossan Kensei" },
+  :  { active: false, name: "Kuroshitsuji: Midori no Majo" },
+  :  { active: false, name: "Katainaka no Ossan Kensei" },
   653:    { active: true, name: "Detective Conan" },
   11686:  { active: true, name: "Anne shirley" },
-  11688:  { active: true, name: "Slime Taoshite 300-nen" },
-  11684:  { active: true, name: "Nazotoki wa Dinner no Ato d" },
-  11712:  { active: true, name: "Chuuzenji-sensei Mononoke" },
-  11715:  { active: true, name: "Teogonia" },
+  :  { active: false, name: "Slime Taoshite 300-nen" },
+  :  { active: false, name: "Nazotoki wa Dinner no Ato d" },
+  :  { active: false, name: "Chuuzenji-sensei Mononoke" },
+  :  { active: false, name: "Teogonia" },
   11658:  { active: true, name: "Kusuriya no Hitorigoto 2nd" },
   11725:  { active: true, name: "Lord of Mysteries" },
   11726:  { active: true, name: "Koujo Denka no Kateikyoushi" }
