@@ -3,53 +3,51 @@ const https = require("https");
 const express = require("express");
 const fetch = require("node-fetch");
 const app = express();
+app.use(express.urlencoded({ extended: true }));
 
-const email = "SOOS1412123@gmail.com";
-const password = "SOOS";
-const commentText = "انمي حْرا ";
-
-// إعدادات التحكم
+let email = "SOOS1412123@gmail.com";
+let password = "SOOS";
+let commentText = "انمي حْرا ";
+let commentsPerMinute = 60;
+let parallelAnimeCount = 3;
+let delay = (60 / commentsPerMinute) * 1000;
 const maxCommentsPerAnime = 75;
-const commentsPerMinute = 60;
-const delay = (60 / commentsPerMinute) * 1000;
-const parallelAnimeCount = 3;
 
-// 📝 قائمة الأنميات مع الاسم وحالة التفعيل
 const animeTargets = {
-  532:    { active: true, name: "One Piece" },
-  11729:  { active: true, name: "Necronomico no Cosmic Horror Show" },
-  11728:  { active: true, name: "Kanojo, Okarishimasu 4th Season" },
-  1:  { active: false, name: "Apocalypse Hotel" },
-  2:  { active: false, name: "Kidou Senshi Gundam" },
-  3:  { active: false, name: "Shiunji-ke no Kodomotachi" },
-  11673:  { active: true, name: "Kijin Gentoushou" },
-  4:  { active: false, name: "Compass 2.0: Sentou" },
-  11703:  { active: true, name: "Vigilante: Boku no Hero" },
-  11702:  { active: true, name: "Summer Pockets" },
-  5:  { active: false, name: "Aharen-san wa Hakarenai" },
-  11705:  { active: true, name: "Lazarus" },
-  6:  { active: false, name: "Maebashi Witches" },
-  7:  { active: false, name: "Gorilla no kami kara kago" },
-  11694:  { active: true, name: "Shin Samurai-den Yaiba" },
-  11697:  { active: true, name: "Witch Watch" },
-  11721:  { active: true, name: "The All-devouring whale" },
-  11718:  { active: false, name: "Ore wa Seikan Kokka no" },
-  11724:  { active: true, name: "Takopii no Genzai" },
-  8:  { active: false, name: "Classic*Stars" },
-  9:  { active: false, name: "A-Rank Party wo" },
-  11710:  { active: true, name: "Hibi wa Sugiredo Meshi" },
-  11711:  { active: true, name: "Mono" },
-  10:  { active: false, name: "Kuroshitsuji: Midori no Majo" },
-  11:  { active: false, name: "Katainaka no Ossan Kensei" },
-  653:    { active: true, name: "Detective Conan" },
-  11686:  { active: true, name: "Anne shirley" },
-  12:  { active: false, name: "Slime Taoshite 300-nen" },
-  13:  { active: false, name: "Nazotoki wa Dinner no Ato d" },
-  14:  { active: false, name: "Chuuzenji-sensei Mononoke" },
-  15:  { active: false, name: "Teogonia" },
-  11658:  { active: true, name: "Kusuriya no Hitorigoto 2nd" },
-  11725:  { active: true, name: "Lord of Mysteries" },
-  11726:  { active: true, name: "Koujo Denka no Kateikyoushi" }
+  532: { active: true, name: "One Piece" },
+  11729: { active: true, name: "Necronomico no Cosmic Horror Show" },
+  11728: { active: true, name: "Kanojo, Okarishimasu 4th Season" },
+  1: { active: false, name: "Apocalypse Hotel" },
+  2: { active: false, name: "Kidou Senshi Gundam" },
+  3: { active: false, name: "Shiunji-ke no Kodomotachi" },
+  11673: { active: true, name: "Kijin Gentoushou" },
+  4: { active: false, name: "Compass 2.0: Sentou" },
+  11703: { active: true, name: "Vigilante: Boku no Hero" },
+  11702: { active: true, name: "Summer Pockets" },
+  5: { active: false, name: "Aharen-san wa Hakarenai" },
+  11705: { active: true, name: "Lazarus" },
+  6: { active: false, name: "Maebashi Witches" },
+  7: { active: false, name: "Gorilla no kami kara kago" },
+  11694: { active: true, name: "Shin Samurai-den Yaiba" },
+  11697: { active: true, name: "Witch Watch" },
+  11721: { active: true, name: "The All-devouring whale" },
+  11718: { active: false, name: "Ore wa Seikan Kokka no" },
+  11724: { active: true, name: "Takopii no Genzai" },
+  8: { active: false, name: "Classic*Stars" },
+  9: { active: false, name: "A-Rank Party wo" },
+  11710: { active: true, name: "Hibi wa Sugiredo Meshi" },
+  11711: { active: true, name: "Mono" },
+  10: { active: false, name: "Kuroshitsuji: Midori no Majo" },
+  11: { active: false, name: "Katainaka no Ossan Kensei" },
+  653: { active: true, name: "Detective Conan" },
+  11686: { active: true, name: "Anne shirley" },
+  12: { active: false, name: "Slime Taoshite 300-nen" },
+  13: { active: false, name: "Nazotoki wa Dinner no Ato d" },
+  14: { active: false, name: "Chuuzenji-sensei Mononoke" },
+  15: { active: false, name: "Teogonia" },
+  11658: { active: true, name: "Kusuriya no Hitorigoto 2nd" },
+  11725: { active: true, name: "Lord of Mysteries" },
+  11726: { active: true, name: "Koujo Denka no Kateikyoushi" }
 };
 
 const headers = {
@@ -73,11 +71,7 @@ function sendComment(animeId) {
     fire: false
   };
   const itemBase64 = Buffer.from(JSON.stringify(itemData)).toString("base64");
-  const payload = new URLSearchParams({
-    email,
-    password,
-    item: itemBase64
-  });
+  const payload = new URLSearchParams({ email, password, item: itemBase64 });
 
   return axios.post(
     "https://app.sanime.net/function/h10.php?page=addcmd",
@@ -133,19 +127,40 @@ startLoop();
 
 // 🟢 صفحة الحالة والتحكم
 app.get("/", (req, res) => {
-  const activeList = Object.entries(animeTargets)
-    .map(([id, info]) => `🔸 [${id}] ${info.name} — ${info.active ? "✅ مفعّل" : "❌ معطّل"}`)
-    .join("<br>");
+  const animeControls = Object.entries(animeTargets)
+    .map(([id, info]) => `
+      <label>
+        <input type="checkbox" name="anime_${id}" ${info.active ? "checked" : ""}>
+        [${id}] ${info.name}
+      </label><br>
+    `).join("");
 
   res.send(`
     <h2>🤖 البوت ${botActive ? "✅ يعمل" : "🛑 متوقف"}</h2>
-    <p>🔁 السرعة: ${commentsPerMinute} تعليق/دقيقة | 🧩 عدد الأنميات في اللحظة: ${parallelAnimeCount}</p>
+    <form method="POST" action="/update">
+      تعليق: <input name="commentText" value="${commentText}" /><br>
+      سرعة (تعليق/دقيقة): <input name="commentsPerMinute" value="${commentsPerMinute}" type="number"/><br>
+      عدد الأنميات بالتوازي: <input name="parallelAnimeCount" value="${parallelAnimeCount}" type="number"/><br><br>
+      <strong>الأنميات المفعّلة:</strong><br>
+      ${animeControls}
+      <br><button type="submit">🔄 تحديث الإعدادات</button>
+    </form>
     <form action="/start"><button>تشغيل البوت</button></form>
     <form action="/stop"><button>إيقاف البوت</button></form>
-    <hr>
-    <h4>📺 الأنميات:</h4>
-    ${activeList}
   `);
+});
+
+app.post("/update", (req, res) => {
+  commentText = req.body.commentText || commentText;
+  commentsPerMinute = parseInt(req.body.commentsPerMinute) || commentsPerMinute;
+  parallelAnimeCount = parseInt(req.body.parallelAnimeCount) || parallelAnimeCount;
+  delay = (60 / commentsPerMinute) * 1000;
+
+  for (const [id, obj] of Object.entries(animeTargets)) {
+    animeTargets[id].active = !!req.body[`anime_${id}`];
+  }
+
+  res.redirect("/");
 });
 
 app.get("/start", (req, res) => {
@@ -158,7 +173,7 @@ app.get("/stop", (req, res) => {
   res.redirect("/");
 });
 
-// 🔁 إبقاء الخدمة حية
+// إبقاء الخدمة حية
 const KEEP_ALIVE_URL = "https://soos.onrender.com/";
 setInterval(() => {
   fetch(KEEP_ALIVE_URL)
@@ -166,7 +181,6 @@ setInterval(() => {
     .catch(err => console.error("⚠️ Keep-alive ping failed:", err.message));
 }, 5 * 60 * 1000);
 
-// 🚪 تشغيل الخادم
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
