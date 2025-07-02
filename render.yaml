@@ -1,7 +1,11 @@
 services:
-  - type: worker
+  - type: web
     name: SOOS
-    env: python
+    env: node
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: python main.py
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+    autoDeploy: true
