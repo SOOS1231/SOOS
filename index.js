@@ -159,7 +159,7 @@ app.get("/stop", (req, res) => {
 });
 
 // 🔁 إبقاء الخدمة حية
-const KEEP_ALIVE_URL = "https://auto-comment-5g7d.onrender.com/";
+const KEEP_ALIVE_URL = "https://soos.onrender.com/";
 setInterval(() => {
   fetch(KEEP_ALIVE_URL)
     .then(() => console.log("🔁 Keep-alive ping sent"))
