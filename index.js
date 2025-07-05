@@ -38,24 +38,24 @@ const sensitiveIndicators = [
 
 let foundLeaks = [];
 let isScanning = true;
-let currentProgress = "يتم تحميل payloads...";
+let currentProgress = "🔃 يتم تحميل payloads...";
 
-// ✅ Route: واجهة الفحص
+// واجهة عرض النتائج
 app.get('/', (req, res) => {
   res.send(`
-  <html><head><meta charset="utf-8"><title>Path Traversal Scanner</title>
-  <meta http-equiv="refresh" content="10">
-  <style>body{background:#111;color:#0f0;font-family:monospace;padding:20px}a{color:#0ff}</style>
-  </head><body>
-    <h1>📡 فحص الثغرات</h1>
-    ${isScanning ? `<p>🔄 ${currentProgress}</p>` : foundLeaks.length > 0
-      ? `<h2>🚨 تم العثور على تسريبات:</h2><ul>${foundLeaks.map(url => `<li><a href="${url}" target="_blank">${url}</a></li>`).join('')}</ul>`
-      : `<h2>✅ لا توجد تسريبات</h2>`}
-  </body></html>
+    <html><head><meta charset="utf-8"><title>Path Traversal Scanner</title>
+    <meta http-equiv="refresh" content="10">
+    <style>body{background:#111;color:#0f0;font-family:monospace;padding:20px}a{color:#0ff}</style>
+    </head><body>
+      <h1>📡 فحص الثغرات</h1>
+      ${isScanning ? `<p>🔄 ${currentProgress}</p>` : foundLeaks.length > 0
+        ? `<h2>🚨 تم العثور على تسريبات:</h2><ul>${foundLeaks.map(url => `<li><a href="${url}" target="_blank">${url}</a></li>`).join('')}</ul>`
+        : `<h2>✅ لا توجد تسريبات</h2>`}
+    </body></html>
   `);
 });
 
-// ✅ Route: keep-alive
+// نقطة keep-alive
 app.get('/ping', (req, res) => {
   res.send('✅ ALIVE');
 });
@@ -98,7 +98,7 @@ async function scan() {
         } catch (_) {}
       }));
 
-      await new Promise(resolve => setTimeout(resolve, 100)); // small delay
+      await new Promise(resolve => setTimeout(resolve, 100)); // delay بسيط لتفادي 502
     }
   }
 
@@ -107,7 +107,15 @@ async function scan() {
   console.log('✅ انتهى الفحص.');
 }
 
+// تشغيل السيرفر والفحص + إضافة keep-alive داخلي
 app.listen(port, () => {
-  console.log(`🟢 يعمل على المنفذ ${port}`);
+  console.log(`🟢 السيرفر يعمل على المنفذ ${port}`);
   scan();
+
+  // 🔁 keep-alive داخلي لحماية الخدمة من الإيقاف
+  setInterval(() => {
+    axios.get('https://soos.onrender.com/ping')
+      .then(() => console.log('💓 Keep-alive ping sent'))
+      .catch(() => console.log('⚠️ Failed keep-alive ping'));
+  }, 4 * 60 * 1000); // كل 4 دقائق
 });
