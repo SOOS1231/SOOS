@@ -18,7 +18,7 @@ const animeId = 532;
 const animeName = "One Piece";
 
 // كلمات يدوية أولًا (أي طول)
-const manualPasswords = ["admin123", "mypassword", "googoog"];
+const manualPasswords = ["admin123", "mypassword", "soos"];
 let manualIndex = 0;
 let tryingManual = true;
 
