@@ -5,7 +5,7 @@ const fetch = require("node-fetch");
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 
-let email = "noon1412123@gmail.com";
+let email = "soos1412123@gmail.com";
 let commentText = "TTTT";
 let commentsPerMinute = 120;
 let delay = (60 / commentsPerMinute) * 1000;
